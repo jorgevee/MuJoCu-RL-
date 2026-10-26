@@ -86,6 +86,24 @@ Run dir: `~/projects/mujoco_rl1/runs/Go1JoystickFlatTerrain_20261024_181831/`
 - **Confirmed: the 50M run was simply too short.** 1024 envs is fine, it just needs >~120M steps.
 - **Per-run budget for the curriculum experiments: 1024 envs × 200M steps ≈ 23 min.** The plan's 20M/run (§6) is far too small for this task; the direct baseline wouldn't even walk.
 
+### Push-recovery calibration on the baseline (2026-10-25)
+
+`scripts/push_recovery.py` on the 1024×200M baseline (`..._181831`), which was trained **without** pushes.
+Rectangular 100 ms torso push, cmd vx 0.5 m/s, 8 directions × 4 repeats (32 scenarios per force). Torso subtree mass 12.7 kg.
+
+| force | Δv | fell | recovered | median recovery time |
+|---|---|---|---|---|
+| 0–200 N | ≤1.57 m/s | 0% | 100% | ≤0.38 s |
+| 250 N | 1.96 m/s | 6% | 94% | 0.54 s |
+| 300 N | 2.35 m/s | 59% | 41% | 0.56 s |
+| 400 N | 3.14 m/s | 94% | 6% | 0.90 s |
+
+- **The cliff is at Δv ≈ 2–2.5 m/s.** Below that the baseline is already near-perfect. The held-out suite needs to sit around the cliff (≈250–400 N per 100 ms) or there's nothing to compare.
+- Side and diagonal pushes are worse than pushes from behind (11% falls from behind vs 29–32% from the side/diagonal, pooled over forces).
+- The env's training perturbation (`pert_config`) is a half-sine pulse with Δv = velocity_kick/π. With the default velocity_kick of [0, 3] that's at most **≈0.95 m/s**, far below the cliff. Strong held-out pushes are therefore naturally outside training conditions.
+- Fall criterion is our own (tilt > 60° or height < 50% of pre-push). The env only terminates when flipped past 90°. Still to do: visually spot-check some "fell" cases.
+- Also floods `linesearch iterations limit reached` (ls_iterations=5, upstream setting).
+
 ## Lessons / gotchas
 
 - **Keep JAX in its own env.** `python3` was coming from an existing micromamba env `torch-dev`. Don't mix PyTorch and JAX in one env, because their CUDA libraries conflict.

@@ -1,8 +1,11 @@
 # Planning files
 
 # Notes Folders
-
+notes/
 
 # video build
 video_build/.venv/
 video_build/out/
+scripts/__pycache__/
+video_assets/
+articles/
